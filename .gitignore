@@ -1,0 +1,6 @@
+# Generated at runtime — do not commit
+visa_bulletin/history.json
+
+.DS_Store
+*.swp
+*~

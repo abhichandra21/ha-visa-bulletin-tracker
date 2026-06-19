@@ -1,0 +1,136 @@
+title: Visa Bulletin
+views:
+  - title: Overview
+    path: overview
+    icon: mdi:passport
+    cards:
+      - type: entities
+        title: Current Priority Dates (India)
+        entities:
+          - entity: sensor.visa_bulletin
+            name: Last Updated
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB1 India
+            state: >
+              {% set d = state_attr('sensor.visa_bulletin', 'eb1') %}
+              {% if d == 'current' %}Current
+              {% elif d == 'unavailable' %}Retrogressed (U)
+              {% elif d %}{{ as_timestamp(d) | timestamp_custom('%b %d, %Y') }}
+              {% else %}N/A{% endif %}
+            icon: mdi:calendar-check
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB2 India
+            state: >
+              {% set d = state_attr('sensor.visa_bulletin', 'eb2') %}
+              {% if d == 'current' %}Current
+              {% elif d == 'unavailable' %}Retrogressed (U)
+              {% elif d %}{{ as_timestamp(d) | timestamp_custom('%b %d, %Y') }}
+              {% else %}N/A{% endif %}
+            icon: mdi:calendar-check
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB3 India
+            state: >
+              {% set d = state_attr('sensor.visa_bulletin', 'eb3') %}
+              {% if d == 'current' %}Current
+              {% elif d == 'unavailable' %}Retrogressed (U)
+              {% elif d %}{{ as_timestamp(d) | timestamp_custom('%b %d, %Y') }}
+              {% else %}N/A{% endif %}
+            icon: mdi:calendar-check
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: Bulletin Month
+            state: >
+              {% set m = state_attr('sensor.visa_bulletin', 'bulletin_month') %}
+              {{ m if m else 'Unknown' }}
+            icon: mdi:calendar-star
+
+      - type: entities
+        title: Month-to-Month Movement
+        entities:
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB1 Movement
+            state: >
+              {% set m = state_attr('sensor.visa_bulletin', 'eb1_movement_days') %}
+              {% if m is number %}{% if m > 0 %}+{% endif %}{{ m }} days{% else %}{{ m }}{% endif %}
+            icon: mdi:arrow-right-bold
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB2 Movement
+            state: >
+              {% set m = state_attr('sensor.visa_bulletin', 'eb2_movement_days') %}
+              {% if m is number %}{% if m > 0 %}+{% endif %}{{ m }} days{% else %}{{ m }}{% endif %}
+            icon: mdi:arrow-right-bold
+          - type: custom:template-entity-row
+            entity: sensor.visa_bulletin
+            name: EB3 Movement
+            state: >
+              {% set m = state_attr('sensor.visa_bulletin', 'eb3_movement_days') %}
+              {% if m is number %}{% if m > 0 %}+{% endif %}{{ m }} days{% else %}{{ m }}{% endif %}
+            icon: mdi:arrow-right-bold
+
+      - type: custom:apexcharts-card
+        header:
+          title: EB2/EB3 Priority Date Progression
+          show: true
+        graph_span: 13month
+        span:
+          offset: "+1month"
+        yaxis:
+          - id: dates
+            show: true
+            apex_config:
+              labels:
+                formatter: |
+                  EVAL:function(val) {
+                    if (!val || val === 0) return '';
+                    var d = new Date(val);
+                    return d.toLocaleDateString('en-US', {month: 'short', year: '2-digit'});
+                  }
+        series:
+          - entity: sensor.visa_bulletin
+            attribute: history
+            data_generator: |
+              return entity.attributes.history
+                .filter(entry => entry.eb2 && entry.eb2 !== 'unavailable')
+                .map(entry => {
+                  const date = new Date(entry.month + '-15');
+                  const eb2 = entry.eb2 === 'current' ? Date.now() : new Date(entry.eb2).getTime();
+                  return [date.getTime(), eb2];
+                });
+            name: EB2
+            type: line
+            yaxis_id: dates
+          - entity: sensor.visa_bulletin
+            attribute: history
+            data_generator: |
+              return entity.attributes.history
+                .filter(entry => entry.eb3 && entry.eb3 !== 'unavailable')
+                .map(entry => {
+                  const date = new Date(entry.month + '-15');
+                  const eb3 = entry.eb3 === 'current' ? Date.now() : new Date(entry.eb3).getTime();
+                  return [date.getTime(), eb3];
+                });
+            name: EB3
+            type: line
+            yaxis_id: dates
+
+      - type: markdown
+        title: Historical Data
+        content: |
+          {% set history = state_attr('sensor.visa_bulletin', 'history') %}
+          {% if history and history | length > 0 %}
+          | Month | EB1 | EB2 | EB3 |
+          |:------|:----|:----|:----|
+          {% for e in history | reverse %}
+          {% set eb1 = 'Current' if e.eb1 == 'current' else ('Retrogressed (U)' if e.eb1 == 'unavailable' else e.eb1) %}
+          {% set eb2 = 'Current' if e.eb2 == 'current' else ('Retrogressed (U)' if e.eb2 == 'unavailable' else e.eb2) %}
+          {% set eb3 = 'Current' if e.eb3 == 'current' else ('Retrogressed (U)' if e.eb3 == 'unavailable' else e.eb3) %}
+          | {{ e.month }} | {{ eb1 }} | {{ eb2 }} | {{ eb3 }} |
+          {% endfor %}
+          {% else %}
+          *No historical data yet.*
+          {% endif %}

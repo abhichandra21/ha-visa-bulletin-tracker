@@ -1,0 +1,253 @@
+# ============================================================
+# Visa Bulletin Tracker — Home Assistant Package
+#
+# Installation: copy the entire visa_bulletin/ directory into
+# your HA configuration directory, then add to customize.yaml:
+#
+#   packages:
+#     visa_bulletin: !include visa_bulletin/package.yaml
+#
+# And register the dashboard in ui-lovelace.yaml:
+#
+#   lovelace-visa:
+#     mode: yaml
+#     title: "Visa Bulletin"
+#     icon: mdi:passport
+#     show_in_sidebar: true
+#     filename: visa_bulletin/dashboard.yaml
+# ============================================================
+
+command_line:
+  - sensor:
+      name: Visa Bulletin
+      command: "python3 /config/visa_bulletin/visa_bulletin.py"
+      value_template: "{{ value_json.last_updated }}"
+      json_attributes:
+        - eb1
+        - eb2
+        - eb3
+        - eb1_movement_days
+        - eb2_movement_days
+        - eb3_movement_days
+        - history
+        - bulletin_month
+      # Polls every 12 hours. Reduce to 3600 for faster new-release detection.
+      scan_interval: 43200
+
+input_text:
+  eb1_current_month:
+    name: "EB1 Current Month Date"
+    initial: "unknown"
+    max: 10
+  eb1_previous_month:
+    name: "EB1 Previous Month Date"
+    initial: "unknown"
+    max: 10
+  eb2_current_month:
+    name: "EB2 Current Month Date"
+    initial: "unknown"
+    max: 10
+  eb2_previous_month:
+    name: "EB2 Previous Month Date"
+    initial: "unknown"
+    max: 10
+  eb3_current_month:
+    name: "EB3 Current Month Date"
+    initial: "unknown"
+    max: 10
+  eb3_previous_month:
+    name: "EB3 Previous Month Date"
+    initial: "unknown"
+    max: 10
+
+template:
+  - sensor:
+      - name: Visa Bulletin Current Date
+        state: "{{ now().strftime('%m%Y') }}"
+
+      - name: "EB1 Last Update"
+        state: >-
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {% if t %}{{ t | as_timestamp | timestamp_custom('%Y-%m-%d') }}{% else %}Unknown{% endif %}
+        icon: mdi:calendar-clock
+
+      - name: "EB2 Last Update"
+        state: >-
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {% if t %}{{ t | as_timestamp | timestamp_custom('%Y-%m-%d') }}{% else %}Unknown{% endif %}
+        icon: mdi:calendar-clock
+
+      - name: "EB3 Last Update"
+        state: >-
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {% if t %}{{ t | as_timestamp | timestamp_custom('%Y-%m-%d') }}{% else %}Unknown{% endif %}
+        icon: mdi:calendar-clock
+
+      - name: "EB1 Current Month"
+        state: "{{ state_attr('sensor.visa_bulletin', 'eb1') }}"
+        icon: mdi:calendar-month
+        attributes:
+          month: "{{ now().strftime('%Y-%m') }}"
+          timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - name: "EB2 Current Month"
+        state: "{{ state_attr('sensor.visa_bulletin', 'eb2') }}"
+        icon: mdi:calendar-month
+        attributes:
+          month: "{{ now().strftime('%Y-%m') }}"
+          timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - name: "EB3 Current Month"
+        state: "{{ state_attr('sensor.visa_bulletin', 'eb3') }}"
+        icon: mdi:calendar-month
+        attributes:
+          month: "{{ now().strftime('%Y-%m') }}"
+          timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - name: "EB1 Monthly Movement"
+        state: >
+          {% set cur = states('input_text.eb1_current_month') %}
+          {% set prev = states('input_text.eb1_previous_month') %}
+          {% if cur not in ('unknown', 'unavailable') and prev not in ('unknown', 'unavailable') and cur != prev %}
+            {{ (strptime(cur, '%Y-%m-%d') - strptime(prev, '%Y-%m-%d')).days }}
+          {% else %}0{% endif %}
+        unit_of_measurement: "days"
+        icon: mdi:calendar-arrow-right
+
+      - name: "EB2 Monthly Movement"
+        state: >
+          {% set cur = states('input_text.eb2_current_month') %}
+          {% set prev = states('input_text.eb2_previous_month') %}
+          {% if cur not in ('unknown', 'unavailable') and prev not in ('unknown', 'unavailable') and cur != prev %}
+            {{ (strptime(cur, '%Y-%m-%d') - strptime(prev, '%Y-%m-%d')).days }}
+          {% else %}0{% endif %}
+        unit_of_measurement: "days"
+        icon: mdi:calendar-arrow-right
+
+      - name: "EB3 Monthly Movement"
+        state: >
+          {% set cur = states('input_text.eb3_current_month') %}
+          {% set prev = states('input_text.eb3_previous_month') %}
+          {% if cur not in ('unknown', 'unavailable') and prev not in ('unknown', 'unavailable') and cur != prev %}
+            {{ (strptime(cur, '%Y-%m-%d') - strptime(prev, '%Y-%m-%d')).days }}
+          {% else %}0{% endif %}
+        unit_of_measurement: "days"
+        icon: mdi:calendar-arrow-right
+
+  - binary_sensor:
+      - name: "EB1 Recently Updated"
+        state: >
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {{ t and (as_timestamp(now()) - as_timestamp(t)) < 604800 }}
+        icon: mdi:trending-up
+        device_class: connectivity
+
+      - name: "EB2 Recently Updated"
+        state: >
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {{ t and (as_timestamp(now()) - as_timestamp(t)) < 604800 }}
+        icon: mdi:trending-up
+        device_class: connectivity
+
+      - name: "EB3 Recently Updated"
+        state: >
+          {% set t = state_attr('sensor.visa_bulletin', 'last_updated') %}
+          {{ t and (as_timestamp(now()) - as_timestamp(t)) < 604800 }}
+        icon: mdi:trending-up
+        device_class: connectivity
+
+automation:
+  - id: visa_bulletin_startup_refresh
+    alias: Visa Bulletin - Update on Startup
+    description: Refresh visa bulletin sensor when Home Assistant starts
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions: []
+    actions:
+      - action: homeassistant.update_entity
+        data:
+          entity_id: sensor.visa_bulletin
+    mode: single
+
+  - id: visa_bulletin_monthly_snapshot
+    alias: Visa Bulletin - Monthly Snapshot
+    description: Rotate input_text helpers when a new bulletin month is detected
+    triggers:
+      - trigger: state
+        entity_id: sensor.visa_bulletin
+    conditions:
+      - condition: template
+        value_template: >
+          {{ state_attr('sensor.visa_bulletin', 'eb2') != states('input_text.eb2_current_month') }}
+    actions:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb1_previous_month
+        data:
+          value: "{{ states('input_text.eb1_current_month') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb2_previous_month
+        data:
+          value: "{{ states('input_text.eb2_current_month') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb3_previous_month
+        data:
+          value: "{{ states('input_text.eb3_current_month') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb1_current_month
+        data:
+          value: "{{ state_attr('sensor.visa_bulletin', 'eb1') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb2_current_month
+        data:
+          value: "{{ state_attr('sensor.visa_bulletin', 'eb2') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.eb3_current_month
+        data:
+          value: "{{ state_attr('sensor.visa_bulletin', 'eb3') }}"
+    mode: single
+
+  - id: visa_bulletin_new_release
+    alias: Visa Bulletin - New Release Notification
+    description: Notify when a new bulletin month is detected
+    triggers:
+      - trigger: state
+        entity_id: sensor.visa_bulletin
+        attribute: bulletin_month
+    conditions:
+      - condition: template
+        value_template: >
+          {{ trigger.from_state is not none
+             and trigger.from_state.attributes.bulletin_month is defined
+             and trigger.to_state.attributes.bulletin_month != trigger.from_state.attributes.bulletin_month }}
+    actions:
+      # Replace notify.YOUR_NOTIFY_SERVICE with your service, e.g.:
+      #   notify.mobile_app_your_phone
+      #   notify.notify
+      - action: notify.YOUR_NOTIFY_SERVICE
+        data:
+          title: "\U0001F4CB New Visa Bulletin Released"
+          message: >
+            {{ state_attr('sensor.visa_bulletin', 'bulletin_month') }} bulletin is out!
+
+            EB1: {% set v = state_attr('sensor.visa_bulletin', 'eb1') %}
+            {%- if v == 'current' %}Current{% elif v == 'unavailable' %}Retrogressed (U){% else %}{{ v }}{% endif %}
+
+            EB2: {% set v = state_attr('sensor.visa_bulletin', 'eb2') %}
+            {%- if v == 'current' %}Current{% elif v == 'unavailable' %}Retrogressed (U){% else %}{{ v }}{% endif %}
+
+            EB3: {% set v = state_attr('sensor.visa_bulletin', 'eb3') %}
+            {%- if v == 'current' %}Current{% elif v == 'unavailable' %}Retrogressed (U){% else %}{{ v }}{% endif %}
+
+            Movement — EB2: {{ state_attr('sensor.visa_bulletin', 'eb2_movement_days') }} days,
+            EB3: {{ state_attr('sensor.visa_bulletin', 'eb3_movement_days') }} days
+          data:
+            # Update this path if you registered the dashboard under a different URL
+            clickAction: /lovelace/visa-bulletin
+    mode: single
