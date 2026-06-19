@@ -4,6 +4,8 @@ Tracks the monthly US Department of State [Visa Bulletin](https://travel.state.g
 
 Data is scraped from the official State Department website. No external services, APIs, or accounts required.
 
+<img width="514" height="911" alt="image" src="https://github.com/user-attachments/assets/ddf63125-25ce-46ac-acea-413c0d5960ae" />
+
 ## What You Get
 
 - Live EB1, EB2, EB3 priority dates for India (Final Action Dates table)
